@@ -7,8 +7,13 @@ import yaml
 import pyzipper
 import os
 
-os.environ["HTTP_PROXY"] = "http://127.0.0.1:7890"     #在此处修改你的HTTP代理地址
-os.environ["HTTPS_PROXY"] = "http://127.0.0.1:7890"    #在此处修改你的HTTPS代理地址
+# 打开代理 （此处配置你的代理地址，如需启用代理，请取消注释并将15 16行注释或删去）
+# os.environ["HTTP_PROXY"] = "http://127.0.0.1:7890"     #在此处修改你的HTTP地址
+# os.environ["HTTPS_PROXY"] = "http://127.0.0.1:7890"    #在此处修改你的HTTPS地址
+
+# 关闭代理
+os.environ.pop("HTTP_PROXY", None)
+os.environ.pop("HTTPS_PROXY", None)
 
 
 from hoshino import Service, priv
