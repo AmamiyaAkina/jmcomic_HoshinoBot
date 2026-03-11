@@ -5,6 +5,11 @@ import base64
 import os
 import yaml
 import pyzipper
+import os
+
+os.environ["HTTP_PROXY"] = "http://127.0.0.1:7890"     #在此处修改你的HTTP代理地址
+os.environ["HTTPS_PROXY"] = "http://127.0.0.1:7890"    #在此处修改你的HTTPS代理地址
+
 
 from hoshino import Service, priv
 
@@ -13,7 +18,7 @@ sv = Service('jmcomic', enable_on_default=False, visible=False, use_priv = priv.
 _current_path = os.path.dirname(__file__)
 config_path = os.path.join(_current_path, 'jm_config.yml')
 
-UPLOAD_FILE_TYPE = 3
+UPLOAD_FILE_TYPE = 2
 '''
 1: 未加密PDF（相思了？）
 2: 加密PDF
@@ -53,14 +58,22 @@ def path2b64(file_path):
     return b64str
 
 async def download_comic(comic_id):
-    '''异步下载comid_id的漫画，返回True表示下载成功，False表示下载失败
-    Returns:
-      bool: True表示下载成功，False表示下载失败
-      str: 下载成功时返回漫画名称，下载失败时返回错误信息
-    '''
     try:
         option = jmcomic.JmOption.from_file(config_path)
-        download_task = asyncio.to_thread(jmcomic.download_album,comic_id,option=option)
+        if hasattr(option, "use_proxy"):
+            option.use_proxy = False
+        if hasattr(option, "use_api"):
+            option.use_api = False
+        if hasattr(option, "enable_jm_proxy"):
+            option.enable_jm_proxy = False
+        if hasattr(option, "enable_api"):
+            option.enable_api = False
+
+        download_task = asyncio.to_thread(
+            jmcomic.download_album,
+            comic_id,
+            option=option
+        )
         task_res = await download_task
         jm_detail, jm_downloader = task_res[0], task_res[1]
         return True, jm_detail.name
@@ -68,6 +81,26 @@ async def download_comic(comic_id):
         err = f"Error downloading comic: {e}"
         print(err)
         return False, err
+
+
+
+# async def download_comic(comic_id):
+#     '''异步下载comid_id的漫画，返回True表示下载成功，False表示下载失败
+#     Returns:
+#       bool: True表示下载成功，False表示下载失败
+#       str: 下载成功时返回漫画名称，下载失败时返回错误信息
+#     '''
+#     try:
+#         option = jmcomic.JmOption.from_file(config_path)
+#         option.client = "html"
+#         download_task = asyncio.to_thread(jmcomic.download_album,comic_id,option=option)
+#         task_res = await download_task
+#         jm_detail, jm_downloader = task_res[0], task_res[1]
+#         return True, jm_detail.name
+#     except Exception as e:
+#         err = f"Error downloading comic: {e}"
+#         print(err)
+#         return False, err
 
 def _enctypt_pdf(input_pdf_path, output_pdf_path, password):
     try:
@@ -123,22 +156,22 @@ async def is_exist_comic(comic_id):
     if UPLOAD_FILE_TYPE == 1:
         return os.path.exists(_output_path+str(comic_id)+".pdf")
     elif UPLOAD_FILE_TYPE == 2:
-        return os.path.exists(_output_path+str(comic_id)+"_encrypted.pdf")
+        return os.path.exists(_output_path+str(comic_id)+".pdf")
     elif UPLOAD_FILE_TYPE == 3:
         return os.path.exists(_output_path+str(comic_id)+".zip")
     elif UPLOAD_FILE_TYPE == 4:
-        return os.path.exists(_output_path+str(comic_id)+"_encrypted.zip")
+        return os.path.exists(_output_path+str(comic_id)+".zip")
 
 async def do_upload(bot, ev, comic_id):
     '''上传文件到'''
     if UPLOAD_FILE_TYPE == 1:
         file_path = _output_path+str(comic_id)+".pdf"
     elif UPLOAD_FILE_TYPE == 2:
-        file_path = _output_path+str(comic_id)+"_encrypted.pdf"
+        file_path = _output_path+str(comic_id)+".pdf"
     elif UPLOAD_FILE_TYPE == 3:
         file_path = _output_path+str(comic_id)+".zip"
     elif UPLOAD_FILE_TYPE == 4:
-        file_path = _output_path+str(comic_id)+"_encrypted.zip"
+        file_path = _output_path+str(comic_id)+".zip"
     try:
         path = await llob_cross_host_download_file(bot, path2b64(file_path))
         await bot.upload_group_file(group_id=ev.group_id, file=path, name=os.path.basename(file_path))
@@ -154,9 +187,9 @@ async def process_file(comic_id):
         str: 处理成功时返回空字符串，处理失败时返回错误信息
     '''
     pure_pdf = _output_path+str(comic_id)+".pdf"
-    enc_pdf = _output_path+str(comic_id)+"_encrypted.pdf"
+    enc_pdf = _output_path+str(comic_id)+".pdf"
     enc_zip_n_pure_pdf = _output_path+str(comic_id)+".zip"
-    enc_zip_n_enc_pdf = _output_path+str(comic_id)+"_encrypted.zip"
+    enc_zip_n_enc_pdf = _output_path+str(comic_id)+".zip"
     pwd = reverse_string(str(comic_id))
 
     if UPLOAD_FILE_TYPE == 1: 
@@ -182,27 +215,44 @@ async def process_file(comic_id):
 async def jmcomic_download(bot, ev):
     comic_id = int(ev.match.group(1))
     if await is_exist_comic(comic_id):
-        await bot.send(ev, f"JMComic: {comic_id}已存在，正在上传...")
+        await bot.send(
+            ev, 
+            f"JM{comic_id}下过了，现在就传"
+        )
         await do_upload(bot, ev, comic_id)
         return
+
     if comic_id in downloading_queue:
-        await bot.send(ev, f"{comic_id}已被提交下载，请稍后再试...")
+        await bot.send(ev, f"别催了，一个一个来")
         return
-    await bot.send(ev, f"正在下载JMComic: {comic_id}，请稍候...")
+
+    await bot.send(ev, f"收到，我搜搜{comic_id}是什么先")
     downloading_queue.append(comic_id)
-    download_res = await download_comic(comic_id)  # [1]是漫画名称
-    if not (download_res[0]):
+    download_res = await download_comic(comic_id)
+
+    if not download_res[0]:
         downloading_queue.remove(comic_id)
-        await bot.send(ev, f"Failed to download comic {comic_id}.")
+        await bot.send(ev, f"本本{comic_id}下载失败\n可能是jm的服务器炸了，过一段时间再试试看吧\n或者检查一下车牌号输入是否正确")
         return
-    # 开始做加密
+
+    # ===== 新增：读取漫画名 =====
+    comic_name = download_res[1]
+    await bot.send(
+        ev,
+        f"本子{comic_id}\n"
+        f"《{comic_name}》\n下好了，正在打包加密"
+    )
+    # ===========================
+
+    # 开始做加密 / 后处理
     ok, msg = await process_file(comic_id)
-    if not (ok):
+    if not ok:
         downloading_queue.remove(comic_id)
-        await bot.send(ev, f"加密失败！\n {msg}")
+        await bot.send(ev, f"JM{comic_id}加密失败！\n{msg}")
         return
+
     downloading_queue.remove(comic_id)
-    await bot.send(ev, f"Comic {comic_id} is uploading...")
+    await bot.send(ev, f"本本{comic_id}加密完成，现在上传\n密码是车牌号反过来")
     await do_upload(bot, ev, comic_id)
 
 # async def main():
