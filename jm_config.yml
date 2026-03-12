@@ -1,11 +1,11 @@
 version: '2.0'
 
 dir_rule:
-  base_dir: /dir/to/your/path  #下载的全部图片文件的路径
+  base_dir: /dir/to/your/path  #下载的全部图片文件的路径，如果是Windows参考Windows系统的路径撰写格式
   rule: Bd_Aid_Pindex
 
 client:
-  impl: html
+  impl: api #如需走代理，请将api修改为html
   domain:
     html:
      - 18comic.vip
@@ -14,7 +14,11 @@ client:
      - jmcomic-zzz.org
      - jm18c-tcb.net
     api:
-      - jmcomic-zzz.one
+      - www.cdnhth.club
+      - www.cdngwc.cc
+      - www.cdngwc.net
+      - www.cdngwc.club
+      - www.cdnhjk.cc
 
 
 download:
@@ -30,16 +34,16 @@ download:
     batch_count: 10
 plugins:
   after_init:
-    - plugin: login # 登录插件，适用于下载某些需要登录可见的本子
-      kwargs:
-        username:  username # 用户名
-        password:  password # 密码
-    - plugin: auto_set_browser_cookies # 自动获取浏览器cookies，详见插件类代码→AutoSetBrowserCookiesPlugin
-      kwargs:
-        browser: firefox
-        domain: 18comic.vip
+    # - plugin: login # 登录插件，凡是走这个插件登录的都必定会是403了
+    #   kwargs:
+    #     username:  username # 用户名
+    #     password:  password # 密码
+    # - plugin: auto_set_browser_cookies # 自动获取浏览器cookies，我用firefox反正没成功过
+    #   kwargs:
+    #     browser: chrome
+    #     domain: 18comic.vip
   after_album:
     - plugin: img2pdf
       kwargs:
-        pdf_dir: /pdf/to/your/path # pdf存放文件夹,推荐放在base_dir路径下
+        pdf_dir: /pdf/to/your/path # pdf存放文件夹,推荐放在base_dir路径下，如果是Windows同上
         filename_rule: Aid # Aname # pdf命名规则，A代表album, name代表使用album.name也就是本子名称
