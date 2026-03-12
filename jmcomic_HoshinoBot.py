@@ -11,11 +11,6 @@ import os
 # os.environ["HTTP_PROXY"] = "http://127.0.0.1:7890"     #在此处修改你的HTTP地址
 # os.environ["HTTPS_PROXY"] = "http://127.0.0.1:7890"    #在此处修改你的HTTPS地址
 
-# 关闭代理
-os.environ.pop("HTTP_PROXY", None)
-os.environ.pop("HTTPS_PROXY", None)
-
-
 from hoshino import Service, priv
 
 sv = Service('jmcomic', enable_on_default=False, visible=False, use_priv = priv.NORMAL, manage_priv = priv.SUPERUSER) # SUPERUSER按需修改
@@ -86,26 +81,6 @@ async def download_comic(comic_id):
         err = f"Error downloading comic: {e}"
         print(err)
         return False, err
-
-
-
-# async def download_comic(comic_id):
-#     '''异步下载comid_id的漫画，返回True表示下载成功，False表示下载失败
-#     Returns:
-#       bool: True表示下载成功，False表示下载失败
-#       str: 下载成功时返回漫画名称，下载失败时返回错误信息
-#     '''
-#     try:
-#         option = jmcomic.JmOption.from_file(config_path)
-#         option.client = "html"
-#         download_task = asyncio.to_thread(jmcomic.download_album,comic_id,option=option)
-#         task_res = await download_task
-#         jm_detail, jm_downloader = task_res[0], task_res[1]
-#         return True, jm_detail.name
-#     except Exception as e:
-#         err = f"Error downloading comic: {e}"
-#         print(err)
-#         return False, err
 
 def _enctypt_pdf(input_pdf_path, output_pdf_path, password):
     try:
@@ -237,7 +212,7 @@ async def jmcomic_download(bot, ev):
 
     if not download_res[0]:
         downloading_queue.remove(comic_id)
-        await bot.send(ev, f"本本{comic_id}下载失败\n可能是jm的服务器炸了，过一段时间再试试看吧\n或者检查一下车牌号输入是否正确")
+        await bot.send(ev, f"本本{comic_id}下载失败，可能的原因如下\njm的服务器炸了，建议过一段时间再试试看\n检查一下车牌号输入是否正确\n该漫画只对登录用户可见（暂时无解）")
         return
 
     # ===== 新增：读取漫画名 =====
